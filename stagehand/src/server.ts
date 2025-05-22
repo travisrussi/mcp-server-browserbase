@@ -27,8 +27,35 @@ import {
   readResource,
 } from "./resources.js";
 
+// Implementation of custom Ai Models via AI-SDK
+// https://github.com/browserbase/stagehand/blob/main/examples/custom_client_openai.ts
+// https://www.npmjs.com/package/@openrouter/ai-sdk-provider
+//
+//     "@openrouter/ai-sdk-provider": "^0.4.6",
+//     "ai": "^4.3.9",
+//     "openai": "^4.87.1"
+import { AISdkClient } from "./aisdk.js";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+const openRouterModel = openrouter(
+  process.env.OPENROUTER_MODEL_ID || "openai/gpt-4o-mini"
+);
+let openRouterModelConfig = {
+  llmClient: new AISdkClient({ model: openRouterModel }),
+};
+
+let openAiModelConfig = {
+  modelName:
+    (process.env.OPENAI_MODEL_ID as ConstructorParams["modelName"]) ||
+    "gpt-4o-mini",
+  modelClientOptions: {
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+};
+
 // Define Stagehand configuration
-export const stagehandConfig: ConstructorParams = {
+export let stagehandConfig: ConstructorParams = {
   env:
     process.env.BROWSERBASE_API_KEY && process.env.BROWSERBASE_PROJECT_ID
       ? "BROWSERBASE"
@@ -62,12 +89,20 @@ export const stagehandConfig: ConstructorParams = {
   enableCaching: true /* Enable caching functionality */,
   browserbaseSessionID:
     undefined /* Session ID for resuming Browserbase sessions */,
-  modelName: "gpt-4o" /* Name of the model to use */,
-  modelClientOptions: {
-    apiKey: process.env.OPENAI_API_KEY,
-  } /* Configuration options for the model client */,
   useAPI: false,
 };
+
+if (process.env.OPENROUTER_API_KEY) {
+  stagehandConfig = {
+    ...stagehandConfig,
+    ...openRouterModelConfig,
+  };
+} else {
+  stagehandConfig = {
+    ...stagehandConfig,
+    ...openAiModelConfig,
+  };
+}
 
 // Global state
 let stagehand: Stagehand | undefined;
